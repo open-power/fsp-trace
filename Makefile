@@ -1,5 +1,5 @@
 ARCH = $(shell gcc -dumpmachine)
-CFLAGS = -fPIC -fno-strict-aliasing -W -Wall -Wextra -Wformat -Wno-uninitialized -pipe -g -O2 -DARCH=\"$(ARCH)\" -pthread
+CFLAGS = -fPIC -fno-strict-aliasing -W -Wall -Wextra -Wformat -Wno-uninitialized -pipe -g -DARCH=\"$(ARCH)\" -pthread
 TARGET = fsp-trace 
 
 all:	$(TARGET)
