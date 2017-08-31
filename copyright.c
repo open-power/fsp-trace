@@ -19,5 +19,5 @@
 
 
 static const char copyright [] __attribute__((unused))
-                               __attribute__((section (".comment"))) =
+                               __attribute__((section (".legal"))) =
 	"Licensed under the Apache License, Version 2.0.\n";
