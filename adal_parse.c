@@ -1229,6 +1229,17 @@ static int trace_output_get_format(int flags, char *head_fmt, size_t head_size,
 	char *foot = " %u traces read.\n";
 	char *empty = "";
 
+	// strftime
+	if (flags & TRACE_TIME_STRFTIME) {
+		entry_timeofday = "%1$s";
+		entry_comp_pre = "|%2$-16s";
+		entry_comp_app = "|%2$-16s";
+		entry_tid = "|%3$5u";
+		entry_message = "|%4$s";
+		entry_filename = "|%5$s";
+		entry_line = "|%6$4u";
+	}
+
 	// comp prepend
 	if (!(flags & TRACE_PREPEND_BUFFERNAME)) {
 		entry_comp_pre = empty;
@@ -1242,9 +1253,13 @@ static int trace_output_get_format(int flags, char *head_fmt, size_t head_size,
 	}
 	// filename
 	if (!(flags & TRACE_FILENAME)) {
+		entry_line = "|%6$4u";
+		if (flags & TRACE_TIME_STRFTIME)
+			entry_line = "|%5$4u";
 		entry_filename = empty;
 		head_filename = empty;
 	}
+
 	// timeofday
 	if (flags & TRACE_TIMEOFDAY) {
 		entry_timestamp = empty;
@@ -1254,9 +1269,6 @@ static int trace_output_get_format(int flags, char *head_fmt, size_t head_size,
 		head_timeofday = empty;
 	}
 
-	if (flags & TRACE_TIME_STRFTIME) {
-		entry_timeofday = "%1$s";
-	}
 
 	// Output format: "  |    timestamp  \| [comp]  \|  tid  \| message \| [comp] \| [filename]"
 	//                "%c|   %08u.%09u  \|  [%s]   \|  %5u  \|    %s   \|  [%s]  \|    [%s]   "
@@ -1295,7 +1307,6 @@ static int trace_output(FILE* fp, char *fmt, ...)
 
 	if (fmt == 0)
 		return -EINVAL;
-
 	va_start(arg_ptr, fmt);
 	ret = vfprintf(fp, fmt, arg_ptr);
 	va_end(arg_ptr);
@@ -1317,7 +1328,6 @@ static int trace_output_entry(FILE *fp, char *entry_fmt,
 	char timestr[DEFAULT_FMT_SZ];
 	char *storage_format;
 	int ret, written = 0;
-	int time_flg = 0;
 	time_t gtime = 0;
 
 	// parse message
@@ -1371,7 +1381,6 @@ static int trace_output_entry(FILE *fp, char *entry_fmt,
 		gtime = trace_ent->stamp.tbh;
 		strftime(timestr, sizeof(timestr), storage_format,
 			 gmtime(&gtime));
-		time_flg = 1;
 		free(storage_format);
 
 	}
@@ -1380,7 +1389,6 @@ static int trace_output_entry(FILE *fp, char *entry_fmt,
 		gtime = trace_ent->stamp.tbh;
 		strftime(timestr, sizeof(timestr), DEFAULT_TIME_FORMAT,
 			  gmtime(&gtime));
-		time_flg = 1;
 	}
 
 	do {
@@ -1388,7 +1396,12 @@ static int trace_output_entry(FILE *fp, char *entry_fmt,
 		if (nextstr != 0)
 			*nextstr = '\0';
 
-		if (time_flg)
+		if (flags & TRACE_TIME_STRFTIME)
+				ret = trace_output(fp, entry_fmt,
+				   timestr, trace_ent->bufname,
+				   TRACE_TID_TID(trace_ent->stamp.tid), curstr,
+				   file, trace_ent->head.line);
+		else if (flags & TRACE_TIMEOFDAY)
 			ret = trace_output(fp, entry_fmt,
 				   timestr, 0, trace_ent->bufname,
 				   TRACE_TID_TID(trace_ent->stamp.tid), curstr,
@@ -1399,7 +1412,6 @@ static int trace_output_entry(FILE *fp, char *entry_fmt,
 				   trace_ent->stamp.tbl, trace_ent->bufname,
 				   TRACE_TID_TID(trace_ent->stamp.tid), curstr,
 				   file, trace_ent->head.line);
-
 		if (ret < 0)
 			return ret;
 		written += ret;
